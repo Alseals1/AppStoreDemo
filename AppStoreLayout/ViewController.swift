@@ -2,40 +2,40 @@
 import UIKit
 
 class ViewController: UIViewController {
-        
     // MARK: Section Definitions
     enum Section: Hashable {
         case promoted
         case standard(String)
         case categories
     }
-    
     enum SupplementaryViewKind {
         static let header = "header"
         static let topline = "topLine"
         static let bottomLine = "bottomLine"
-        
     }
-
     @IBOutlet var collectionView: UICollectionView!
-    
     var dataSource: UICollectionViewDiffableDataSource<Section, Item>!
-    
     var sections = [Section]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        registerCells()
+        registerSuppumentaryItems()
+    }
+    
+    func registerSuppumentaryItems() {
+        collectionView.register(SectionHeaderView.self, forSupplementaryViewOfKind: SupplementaryViewKind.header, withReuseIdentifier: SectionHeaderView.reuseIdentifier)
+        collectionView.register(LineView.self, forSupplementaryViewOfKind: SupplementaryViewKind.topline, withReuseIdentifier: LineView.reuseIdentifier)
+        collectionView.register(LineView.self, forSupplementaryViewOfKind: SupplementaryViewKind.bottomLine, withReuseIdentifier: LineView.reuseIdentifier)
+        configureDataSource()
+    }
+    
+    func registerCells() {
         // MARK: Collection View Setup
         collectionView.collectionViewLayout = createLayout()
         collectionView.register(PromotedAppCollectionViewCell.self, forCellWithReuseIdentifier: PromotedAppCollectionViewCell.reuseIdentifier)
         collectionView.register(StandardAppCollectionViewCell.self, forCellWithReuseIdentifier: StandardAppCollectionViewCell.reuseIdentifier)
         collectionView.register(CategoryCollectionViewCell.self, forCellWithReuseIdentifier: CategoryCollectionViewCell.reuseIdentifier)
-        
-        collectionView.register(SectionHeaderView.self, forSupplementaryViewOfKind: SupplementaryViewKind.header, withReuseIdentifier: SectionHeaderView.reuseIdentifier)
-        collectionView.register(LineView.self, forSupplementaryViewOfKind: SupplementaryViewKind.topline, withReuseIdentifier: LineView.reuseIdentifier)
-        collectionView.register(LineView.self, forSupplementaryViewOfKind: SupplementaryViewKind.bottomLine, withReuseIdentifier: LineView.reuseIdentifier)
-        configureDataSource()
     }
     
     func createLayout() -> UICollectionViewLayout {
@@ -54,7 +54,7 @@ class ViewController: UIViewController {
             headerItem.contentInsets = supplementaryItemContentInsets
             topLineItem.contentInsets = supplementaryItemContentInsets
             bottonLineItem.contentInsets = supplementaryItemContentInsets
-
+            
             switch section {
             case .promoted:
                 let itemsize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .fractionalWidth(1))
@@ -116,24 +116,19 @@ class ViewController: UIViewController {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PromotedAppCollectionViewCell.reuseIdentifier, for: indexPath) as? PromotedAppCollectionViewCell
                 cell?.configureCell(item.app!)
                 return cell
-                
             case .standard:
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: StandardAppCollectionViewCell.reuseIdentifier, for: indexPath) as? StandardAppCollectionViewCell
                 let isThirdLine = (indexPath.row + 1).isMultiple(of: 3)
                 cell?.configureCell(item.app!, hideBottomLine: isThirdLine)
                 return cell
-                
             case .categories:
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: CategoryCollectionViewCell.reuseIdentifier, for: indexPath) as? CategoryCollectionViewCell
                 let lastLine = collectionView.numberOfItems(inSection: indexPath.section) == indexPath.row + 1
                 cell?.configureCell(item.category!, hideBottomLine: lastLine)
                 return cell
-                
             default:
                 fatalError("Cannot find cell")
             }
-            
-            
         })
         
         dataSource.supplementaryViewProvider = { collectionView, kind, indexPath -> UICollectionReusableView? in
@@ -144,46 +139,36 @@ class ViewController: UIViewController {
                 let section = self.sections[indexPath.section]
                 let sectionName: String
                 
-               
-                    switch section {
-                    case .promoted:
-                        return nil
-                    case .categories:
-                        sectionName = "Top Categories"
-                    case .standard(let name):
-                        sectionName = name
-                    }
-                
-                
+                switch section {
+                case .promoted:
+                    return nil
+                case .categories:
+                    sectionName = "Top Categories"
+                case .standard(let name):
+                    sectionName = name
+                }
                 headerView.setTitle(sectionName)
                 return headerView
-                
             case SupplementaryViewKind.topline, SupplementaryViewKind.bottomLine:
                 let lineView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: LineView.reuseIdentifier, for: indexPath) as! LineView
                 return lineView
-                
             default:
                 return nil
             }
         }
         
-       
         //MARK: Snapshot Definition
         var snapshot = NSDiffableDataSourceSnapshot<Section, Item>()
-        snapshot.appendSections([.promoted])
-        snapshot.appendItems(Item.promotedApps, toSection: .promoted)
-        
         let popularSection = Section.standard("Popular This Week")
         let essentialSection = Section.standard("Essential Picks")
         let categorySection = Section.categories
-
+        
+        snapshot.appendSections([.promoted])
+        snapshot.appendItems(Item.promotedApps, toSection: .promoted)
         snapshot.appendSections([popularSection, essentialSection, categorySection])
         snapshot.appendItems(Item.popularApps, toSection: popularSection)
         snapshot.appendItems(Item.essentialApps, toSection: essentialSection)
         snapshot.appendItems(Item.categories, toSection: categorySection)
-        
-        
-        
         sections = snapshot.sectionIdentifiers
         dataSource.apply(snapshot)
     }
